@@ -1,0 +1,30 @@
+name: Deployed E2E
+
+# Vercel reports each deployment (preview and production) to GitHub. When one
+# succeeds, run the Playwright suite against the real deployed URL.
+on: deployment_status
+
+jobs:
+  e2e:
+    name: E2E (deployed)
+    if: github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e
+        env:
+          BASE_URL: ${{ github.event.deployment_status.environment_url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-deployed
+          path: playwright-report
+          retention-days: 7
