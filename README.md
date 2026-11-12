@@ -8,7 +8,7 @@ See `CLAUDE.md` for architecture, conventions and the definition of done.
 
 ## Local setup (Windows)
 
-1. Node 22 (`nvm install 22`), then `corepack enable` to get pnpm.
+1. Node 26 LTS (`winget install OpenJS.NodeJS.LTS`), then `npm install -g pnpm`.
 2. `git pull`, then `pnpm install`.
 3. `copy .env.example .env` and fill in the two Supabase connection strings.
 4. `pnpm db:migrate` to create the tables.
