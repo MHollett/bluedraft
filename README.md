@@ -17,46 +17,17 @@ See `CLAUDE.md` for architecture, conventions and the definition of done.
 
 The app runs without a database too; the status line will say `Database: not_configured`.
 
-## One-time deployment setup
+## How changes are made
 
-### Supabase
+Every change goes **issue → branch → pull request**: start from a GitHub issue with acceptance
+criteria, work on a branch named `<issue-number>-<slug>` (e.g. `2-delete-note`), and open a PR
+whose description says `Closes #<n>`. `main` only changes through PRs that pass every required
+check. Details in `CLAUDE.md` → Workflow.
 
-- Region near Vercel's default functions region (US East) unless you need Canadian residency.
-- Disable the Data API. All access goes through our API.
-- Connection strings (from **Connect**): transaction pooler, port 6543 → `DATABASE_URL`;
-  session pooler, port 5432 → `DIRECT_URL`.
+## Infrastructure
 
-### Vercel
-
-1. **Add New → Project**, import this repo. The settings come from `vercel.json`.
-2. **Settings → Environment Variables:** add `DATABASE_URL` for Production and Preview.
-3. **Settings → Deployment Protection → Protection Bypass for Automation:** create a secret,
-   then add it to GitHub as repo secret `VERCEL_AUTOMATION_BYPASS_SECRET`
-   (**Settings → Secrets and variables → Actions**). This lets the deployed E2E tests reach
-   protected previews.
-4. Check `https://<project>.vercel.app/api/health` returns `{"status":"ok","database":"ok"}`.
-
-### Domain (Cloudflare DNS)
-
-1. Vercel **Settings → Domains**, add `yourdomain` and `www.yourdomain`.
-2. Copy the records Vercel shows into Cloudflare DNS with the proxy set to **DNS only**
-   (grey cloud). Proxying through Cloudflare in front of Vercel breaks certificates and caching.
-
-### GitHub branch protection
-
-**Settings → Rules → Rulesets → New branch ruleset** for `main`:
-
-- Require a pull request before merging.
-- Require status checks: **Lint, typecheck, test, build**, **E2E (local servers)**,
-  **E2E (deployed)**.
-- Block force pushes.
-
-This makes "CI is green" a hard requirement for agents and for you.
-
-## Migrations
-
-Edit `db/schema.ts`, run `pnpm db:generate --name <change>`, commit the SQL, then
-`pnpm db:migrate`. Apply migrations to production **before** merging code that depends on them.
+How GitHub, Vercel, Cloudflare (`bluedraft.app`) and Supabase are configured, plus runbooks for
+migrations, environment variables and password rotation: [`docs/infrastructure.md`](docs/infrastructure.md).
 
 ## Optional: more agent skills
 

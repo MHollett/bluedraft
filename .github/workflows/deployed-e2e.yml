@@ -1,16 +1,40 @@
 name: Deployed E2E
 
-# Vercel reports each deployment (preview and production) to GitHub. When one
-# succeeds, run the Playwright suite against the real deployed URL.
-on: deployment_status
+# Vercel sends a repository_dispatch event when a deployment (preview or production)
+# succeeds. Run the Playwright suite against that deployment's URL.
+#
+# repository_dispatch workflows always run from the default branch, and their own check
+# runs attach to main's latest commit, not the PR. So this job reports its result as a
+# commit status named "E2E (deployed)" on the deployed commit, which is what shows up on
+# the PR and what the main ruleset requires.
+on:
+  repository_dispatch:
+    types: [vercel.deployment.success]
+
+permissions:
+  contents: read
+  statuses: write
 
 jobs:
   e2e:
     name: E2E (deployed)
-    if: github.event.deployment_status.state == 'success'
     runs-on: ubuntu-latest
+    env:
+      # Payload values go through env, never straight into scripts.
+      SHA: ${{ github.event.client_payload.git.sha }}
+      DEPLOY_URL: ${{ github.event.client_payload.url }}
+      ENVIRONMENT: ${{ github.event.client_payload.environment }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      GH_TOKEN: ${{ github.token }}
     steps:
+      - name: Report pending
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
+            -f state=pending -f context="E2E (deployed)" \
+            -f description="Running against the ${ENVIRONMENT} deployment" -f target_url="${RUN_URL}"
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.client_payload.git.sha }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -20,7 +44,7 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm e2e
         env:
-          BASE_URL: ${{ github.event.deployment_status.environment_url }}
+          BASE_URL: ${{ github.event.client_payload.url }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -28,3 +52,12 @@ jobs:
           name: playwright-report-deployed
           path: playwright-report
           retention-days: 7
+      - name: Report result
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ "$JOB_STATUS" = "success" ]; then state=success; desc="Passed against ${DEPLOY_URL}"; else state=failure; desc="Failed against ${DEPLOY_URL}"; fi
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
+            -f state="$state" -f context="E2E (deployed)" \
+            -f description="${desc:0:140}" -f target_url="${RUN_URL}"
