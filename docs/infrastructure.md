@@ -111,7 +111,7 @@ function, everything else → `index.html` for client-side routing). Node versio
 **Protection Bypass for Automation** is enabled; its secret is stored in GitHub as
 `VERCEL_AUTOMATION_BYPASS_SECRET` so `E2E (deployed)` can reach previews.
 
-**Domains:** `bluedraft.app` is the production domain; `www.bluedraft.app` redirects to it.
+**Domain:** the app is live at `https://bluedraft.app`. Use that address everywhere.
 
 **Logs:** Project → Logs. The health check logs the real database error there; the public
 `/api/health` response only says `database: error`.
