@@ -1,0 +1,26 @@
+name: Linked issue
+
+# Every change must correspond to a GitHub issue (see CLAUDE.md → Workflow).
+# Fails unless the PR body links one with a closing keyword, e.g. "Closes #12".
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  linked-issue:
+    name: Linked issue
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the PR body references an issue
+        env:
+          # Passed through env, never interpolated into the script, so PR text can't inject shell.
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if printf '%s' "$PR_BODY" | grep -Eiq '\b(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]+#[0-9]+'; then
+            echo "Linked issue found."
+          else
+            echo "::error title=No linked issue::Add 'Closes #<issue-number>' to the PR description. Every change must correspond to a GitHub issue (see CLAUDE.md → Workflow)."
+            exit 1
+          fi
