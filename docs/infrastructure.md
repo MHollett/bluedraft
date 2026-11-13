@@ -120,8 +120,8 @@ function, everything else → `index.html` for client-side routing). Node versio
 
 Registrar and DNS for `bluedraft.app`.
 
-**DNS records** (DNS → Records) are the ones Vercel shows under Settings → Domains: an `A`
-record for `@` and a `CNAME` for `www`.
+**DNS records** (DNS → Records) are the ones Vercel shows under Settings → Domains: an `CNAME`
+record for `@`.
 
 - **Proxy status must be DNS only (grey cloud).** Proxying through Cloudflare puts a second
   CDN and certificate in front of Vercel's and causes redirect loops and certificate errors.
