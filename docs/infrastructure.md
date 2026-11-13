@@ -51,7 +51,8 @@ branch:
 - Require status checks to pass:
   - `Lint, typecheck, test, build`
   - `E2E (local servers)`
-  - `E2E (deployed)`: add once it has run on a PR (it only appears in the picker after a run)
+  - `E2E (deployed)`: a commit status, not a job check (see below). Add it once it has run;
+    the picker only lists checks seen recently
   - `Linked issue`: add once the workflow is on `main`
 - "Require branches to be up to date": off
 
@@ -60,17 +61,25 @@ deleted automatically after merge.
 
 **Actions secrets** (Settings → Secrets and variables → Actions):
 
-| Name                              | Used by            | Source                                                            |
-| --------------------------------- | ------------------ | ----------------------------------------------------------------- |
-| `VERCEL_AUTOMATION_BYPASS_SECRET` | `deployed-e2e.yml` | Vercel → Deployment Protection → Protection Bypass for Automation |
+| Name                              | Used by            | Source                                                     |
+| --------------------------------- | ------------------ | ---------------------------------------------------------- |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | `deployed-e2e.yml` | Vercel `repository_dispatch` (`vercel.deployment.success`) | Runs Playwright against the deployed URL and posts the commit status `E2E (deployed)` |
 
 **Workflows** (`.github/workflows/`):
 
-| File               | Trigger                     | Job name(s)                                                |
-| ------------------ | --------------------------- | ---------------------------------------------------------- |
-| `ci.yml`           | PRs, pushes to `main`       | `Lint, typecheck, test, build`, `E2E (local servers)`      |
-| `deployed-e2e.yml` | Vercel deployment succeeded | `E2E (deployed)`, runs Playwright against the deployed URL |
-| `linked-issue.yml` | PR opened or edited         | `Linked issue`, fails unless the body says `Closes #n`     |
+| File               | Trigger                                                    | Job name(s)                                                                           |
+| ------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `ci.yml`           | PRs, pushes to `main`                                      | `Lint, typecheck, test, build`, `E2E (local servers)`                                 |
+| `deployed-e2e.yml` | Vercel `repository_dispatch` (`vercel.deployment.success`) | Runs Playwright against the deployed URL and posts the commit status `E2E (deployed)` |
+| `linked-issue.yml` | PR opened or edited                                        | `Linked issue`, fails unless the body says `Closes #n`                                |
+
+**How `E2E (deployed)` works.** Vercel sends a `repository_dispatch` event to GitHub when a
+deployment succeeds (Vercel recommends this over `deployment_status`, which this project does
+not emit). GitHub always runs `repository_dispatch` workflows from `main`, and their job checks
+attach to `main`'s latest commit rather than the PR. So the workflow checks out the deployed
+commit (`client_payload.git.sha`), tests `client_payload.url`, and posts the result as a
+**commit status** on that commit. That status is what the PR shows and the ruleset requires.
+Consequence: changes to `deployed-e2e.yml` only take effect after they're merged to `main`.
 
 **Claude GitHub App:** installed on the account with access to `bluedraft`, so Claude can
 create issues, push branches and open PRs.
@@ -95,6 +104,8 @@ function, everything else → `index.html` for client-side routing). Node versio
   first deploy: `database "postgres"" does not exist`).
 - Changes apply to **new** deployments only. Redeploy after editing.
 - `DIRECT_URL` is not needed on Vercel; migrations run from a developer machine.
+
+**Git → repository_dispatch events:** enabled. `E2E (deployed)` depends on it.
 
 **Deployment protection:** preview deployments require Vercel login (the Hobby default).
 **Protection Bypass for Automation** is enabled; its secret is stored in GitHub as
